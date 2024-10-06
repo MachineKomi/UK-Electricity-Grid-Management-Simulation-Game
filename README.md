@@ -6,6 +6,16 @@ The **UK Electricity Grid Management Simulation Game** is an interactive web-bas
 
 This project simulates real-life grid management challenges in an easy-to-understand way, incorporating grid events, weather conditions, and unpredictable fluctuations in both demand and generation.
 
+## Screenshots
+
+Here are some screenshots of the **UK Electricity Grid Management Simulation Game** in action:
+
+![Energy Sys Sim Screenshot 00](images/screenshots/Energy%20Sys%20Sim%20Screenshot%2000.png)
+
+![Energy Sys Sim Screenshot 01](images/screenshots/Energy%20Sys%20Sim%20Screenshot%2001.png)
+
+![Energy Sys Sim Screenshot 02](images/screenshots/Energy%20Sys%20Sim%20Screenshot%2002.png)
+
 ## Features
 
 - **Control Panel**: Manage electricity generation and observe changes in demand.
