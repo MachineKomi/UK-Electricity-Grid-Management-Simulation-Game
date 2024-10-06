@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UK Electricity Grid Management Simulation Game</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.12.1/plotly.min.js">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            width: 80%;
+            margin-top: 20px;
+        }
+        .section {
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+        }
+        .section h3 {
+            margin: 0 0 10px;
+            font-size: 1.2em;
+        }
+        .control-panel {
+            text-align: center;
+        }
+        .control-panel button {
+            margin: 5px;
+            padding: 10px;
+            background-color: #007bff;
+            border: none;
+            color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .control-panel button:hover {
+            background-color: #0056b3;
+        }
+        .grid-status {
+            color: red;
+            font-weight: bold;
+        }
+        @keyframes flash {
+            from { background-color: transparent; }
+            to { background-color: #ffcccc; }
+        }
+        .title {
+            font-size: 2em;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .reset-section {
+            width: 80%;
+            margin-top: 20px;
+            text-align: right;
+        }
+        .reset-button {
+            padding: 10px;
+            background-color: #dc3545;
+            border: none;
+            color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .timer {
+            font-size: 1.2em;
+            text-align: center;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="title">UK Electricity Grid Management Simulation Game</div>
+    <div class="dashboard">
+        <!-- Grid Event Log Section -->
+        <div class="section" id="event-log">
+            <h3>📜 Grid Event Log</h3>
+            <div id="event-log-content" style="height: 300px; overflow-y: auto;">
+                <!-- Event logs will be appended here -->
+            </div>
+        </div>
+
+        <!-- Control Panel Section -->
+        <div class="section control-panel">
+            <h3>🛠️ Control Panel</h3>
+            <div style="margin-top: 10px;">
+                <label>Total Generation (MW)</label><br>
+                <input type="range" min="0" max="10000" value="5000" id="generation-slider" step="10">
+            </div>
+            <div style="margin-top: 10px;">
+                <label>Total Demand (MW)</label><br>
+                <input type="range" min="0" max="10000" value="5000" id="demand-slider" step="10">
+            </div>
+            <div style="margin-top: 10px;">
+                <label>Renewable Contribution (%)</label><br>
+                <input type="range" min="0" max="100" value="30" id="renewable-slider" step="1">
+            </div>
+            <div>
+                <label>Weather Conditions</label>
+                <select id="weather-select">
+                    <option value="Sunny">Sunny</option>
+                    <option value="Cloudy">Cloudy</option>
+                    <option value="Windy">Windy</option>
+                    <option value="Stormy">Stormy</option>
+                </select>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                <button onclick="increaseGeneration()">Increase Generation by 20%</button>
+                <button onclick="increaseGeneration10()">Increase Generation by 10%</button>
+                <button onclick="decreaseGeneration()">Decrease Generation by 20%</button>
+                <button onclick="decreaseGeneration10()">Decrease Generation by 10%</button>
+            </div>
+        </div>
+
+        <!-- Grid Status Section -->
+        <div class="section" id="grid-status">
+            <h3>⚡ Grid Status</h3>
+            <div id="grid-status-content" style="text-align: center; font-size: 1.5em;">Grid is stable</div>
+            <div id="stability-ticker" style="text-align: center; font-size: 1.2em;">Stable Time: 0s</div>
+            <div id="high-score" style="text-align: center; font-size: 1.2em;">High Score: 0s</div>
+        </div>
+
+        <!-- Metrics Section -->
+        <div class="section" id="metrics">
+            <h3>⚖️ Grid Balance Summary</h3>
+            <div id="grid-balance" style="height: 30px; background: linear-gradient(to right, red, yellow, green, yellow, red); position: relative; grid-column: span 3;">
+                <div id="balance-indicator" style="position: absolute; width: 2px; height: 100%; background-color: black; left: 50%;"></div>
+            </div>
+            <h3>📊 Metrics</h3>
+            <div id="total-demand">Total Demand (MW): <span id="demand-metric">5000</span></div>
+            <div id="total-generation">Total Generation (MW): <span id="generation-metric">5000</span></div>
+            <div id="renewable-contribution">Renewable Contribution (%): <span id="renewable-metric">30</span></div>
+        </div>
+
+        <!-- Weather Section -->
+        <div class="section" id="weather-section" style="text-align: center;">
+            <h3>🌤️ Current Weather</h3>
+            <div id="weather-display" style="font-size: 5em;">☀️</div>
+        </div>
+
+        <!-- Blackout Timer Section -->
+        <div class="section" id="blackout-timer-section" style="text-align: center;">
+            <h3>⏳ Time to Blackout</h3>
+            <div id="blackout-timer" style="font-size: 1.5em; animation: flash 1s infinite alternate;">Time to blackout: 10s</div>
+        </div>
+    </div>
+
+    <!-- Reset Simulation Section -->
+    <div class="reset-section">
+        <button onclick="resetSimulation()" class="reset-button">Reset Simulation</button>
+    </div>
+
+    <script>
+        let generation = 5000;
+        let demand = 5000;
+        let renewableContribution = 30;
+        let blackoutCountdown = 10;
+        let blackoutInterval = null;
+        let simulationInterval;
+        let weatherInterval;
+        let stabilityTicker = 0;
+document.getElementById("stability-ticker").innerText = `Stable Time: 0s`;
+        let highScore = 0;
+        let stabilityInterval;
+
+        function updateMetrics() {
+            generation = parseInt(document.getElementById("generation-slider").value);
+            demand = parseInt(document.getElementById("demand-slider").value);
+            renewableContribution = parseInt(document.getElementById("renewable-slider").value);
+            document.getElementById("generation-metric").innerText = generation;
+            document.getElementById("demand-metric").innerText = demand;
+            document.getElementById("renewable-metric").innerText = renewableContribution;
+        }
+
+        function addEventLog(message, positive = true) {
+            const logContent = document.getElementById("event-log-content");
+            const newLog = document.createElement("div");
+            newLog.innerText = new Date().toLocaleTimeString() + ": " + message;
+            newLog.style.color = positive ? "green" : "red";
+            logContent.appendChild(newLog);
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+
+        function increaseGeneration() {
+            generation += Math.round(generation * 0.2);
+            document.getElementById("generation-slider").value = generation;
+            addEventLog("Increased generation by 20%", true);
+            updateMetrics();
+        }
+
+        function decreaseGeneration() {
+            generation -= Math.round(generation * 0.2);
+            document.getElementById("generation-slider").value = generation;
+            addEventLog("Decreased generation by 20%", false);
+            updateMetrics();
+        }
+
+        function increaseGeneration10() {
+            generation += Math.round(generation * 0.1);
+            document.getElementById("generation-slider").value = generation;
+            addEventLog("Increased generation by 10%", true);
+            updateMetrics();
+        }
+
+        function decreaseGeneration10() {
+            generation -= Math.round(generation * 0.1);
+            document.getElementById("generation-slider").value = generation;
+            addEventLog("Decreased generation by 10%", false);
+            updateMetrics();
+        }
+
+        function resetSimulation() {
+            generation = 5000;
+            demand = 5000;
+            renewableContribution = 30;
+            blackoutCountdown = 10;
+            stabilityTicker = 0;
+            document.getElementById("event-log-content").innerHTML = "";
+            document.getElementById("blackout-timer").innerText = "Grid is stable";
+            document.getElementById("blackout-timer").style.animation = "flash 1s infinite alternate";
+            document.getElementById("stability-ticker").innerText = `Stable Time: 0s`;
+            document.getElementById("high-score").innerText = `High Score: ${highScore}s`;
+            clearInterval(blackoutInterval);
+            blackoutInterval = null;
+            clearInterval(stabilityInterval);
+            updateMetrics();
+        }
+
+        function startBlackoutCountdown() {
+            if (blackoutInterval) return;
+            blackoutInterval = setInterval(() => {
+                blackoutCountdown--;
+                document.getElementById("blackout-timer").innerText = `Time to blackout: ${blackoutCountdown}s`;
+                if (blackoutCountdown <= 0) {
+                    clearInterval(blackoutInterval);
+                    blackoutInterval = null;
+                    document.getElementById("grid-status-content").innerText = "Blackout! Game Over";
+                    document.getElementById("grid-status-content").style.animation = "flash 0.5s infinite alternate";
+                    clearInterval(simulationInterval);
+                    clearInterval(stabilityInterval);
+                }
+            }, 1000);
+        }
+
+        function startStabilityTicker() {
+            if (stabilityInterval) return;
+            stabilityInterval = setInterval(() => {
+                stabilityTicker++;
+                document.getElementById("stability-ticker").innerText = `Stable Time: ${stabilityTicker}s`;
+                if (stabilityTicker > highScore) {
+                    highScore = stabilityTicker;
+                    document.getElementById("high-score").innerText = `High Score: ${highScore}s`;
+                }
+            }, 1000);
+        }
+
+        function stopStabilityTicker() {
+            clearInterval(stabilityInterval);
+            stabilityInterval = null;
+        }
+
+        simulationInterval = setInterval(() => {
+            // Decrease update frequency to 0.5 seconds
+            // Simulate random changes in demand and generation with reduced impact and sequence probability
+            const randomDemandChange = Math.floor(Math.random() * 801) - 400;
+            const randomGenerationChange = Math.floor(Math.random() * 801) - 400;
+
+            // Adjust demand and generation based on current weather
+            const currentWeather = document.getElementById("weather-display").innerText;
+            let weatherImpactFactor = 1;
+            if (currentWeather === "⛈️") {
+                weatherImpactFactor = 1.5; // Stormy weather increases demand and reduces generation
+            } else if (currentWeather === "💨" || currentWeather === "☁️") {
+                weatherImpactFactor = 1.2; // Windy or Cloudy weather moderately affects demand and generation
+            }
+
+            demand += Math.round(randomDemandChange * weatherImpactFactor);
+            generation += Math.round(randomGenerationChange / weatherImpactFactor);
+
+            // Adjust probability of multiple events happening in sequence
+            if (Math.random() < 0.6) {
+                const events = [
+                    "Unexpected surge in residential demand",
+                    "Industry power cut",
+                    "Power plant maintenance",
+                    "Grid equipment failure",
+                    "Sudden renewable output fluctuation",
+                    "Heatwave increasing air conditioning usage",
+                    "Decrease in demand by 10%",
+                    "Decrease in demand by 20%",
+                    "Decrease in demand by 40%"
+                ];
+                const eventName = events[Math.floor(Math.random() * events.length)];
+                if (eventName.includes("Decrease in demand")) {
+                    const percentage = parseInt(eventName.match(/\d+/)[0]) / 100;
+                    demand -= Math.round(demand * percentage);
+                } else {
+                    demand += Math.round(randomDemandChange * weatherImpactFactor);
+                }
+                addEventLog(`${eventName}: change in demand by ${randomDemandChange} MW`, randomDemandChange >= 0);
+            }
+            if (Math.random() < 0.05) {
+                const events = [
+                    "Unexpected shutdown of a power plant",
+                    "Increase in wind generation",
+                    "Solar panel output change",
+                    "Scheduled maintenance",
+                    "Sudden generator malfunction",
+                    "Decrease in generation by 10%",
+                    "Decrease in generation by 20%",
+                    "Decrease in generation by 40%"
+                ];
+                const eventName = events[Math.floor(Math.random() * events.length)];
+                if (eventName.includes("Decrease in generation")) {
+                    const percentage = parseInt(eventName.match(/\d+/)[0]) / 100;
+                    generation -= Math.round(generation * percentage);
+                } else {
+                    generation += Math.round(randomGenerationChange / weatherImpactFactor);
+                }
+                addEventLog(`${eventName}: change in generation by ${randomGenerationChange} MW`, randomGenerationChange >= 0);
+            }
+
+            // Update metrics and check grid status
+            document.getElementById("generation-slider").value = generation;
+            document.getElementById("demand-slider").value = demand;
+            updateMetrics();
+
+            // Update grid balance indicator
+            const imbalance = generation - demand;
+            const indicatorPosition = 50 + (imbalance / 10000) * 50;
+            document.getElementById("balance-indicator").style.left = `${Math.max(0, Math.min(100, indicatorPosition))}%`;
+
+            if (Math.abs(generation - demand) > generation * 0.3) {
+                document.getElementById("grid-status-content").innerText = "Warning: Demand and generation are not balanced! Grid instability risk.";
+                document.getElementById("grid-status-content").style.color = "red";
+                document.getElementById("grid-status-content").style.animation = "flash 0.5s infinite alternate";
+                startBlackoutCountdown();
+                stabilityTicker = 0;
+document.getElementById("stability-ticker").innerText = `Stable Time: 0s`;
+stopStabilityTicker();
+            } else {
+                document.getElementById("grid-status-content").innerText = "Grid is stable";
+                document.getElementById("grid-status-content").style.color = "green";
+                document.getElementById("grid-status-content").style.animation = "none";
+                document.getElementById("blackout-timer").innerText = "Grid is stable";
+                document.getElementById("blackout-timer").style.animation = "none";
+                blackoutCountdown = 10;
+                clearInterval(blackoutInterval);
+                blackoutInterval = null;
+                startStabilityTicker();
+            }
+        }, 500);
+
+        function updateWeather() {
+            const weatherOptions = ["☀️", "☁️", "💨", "⛈️"];
+            const randomWeather = weatherOptions[Math.floor(Math.random() * weatherOptions.length)];
+            document.getElementById("weather-display").innerText = randomWeather;
+        }
+
+        weatherInterval = setInterval(updateWeather, 3000);
+
+    </script>
+</body>
+</html>
